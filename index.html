@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0d14">
+<title>Fleet Tracker - East Region</title>
+<link rel="manifest" href="manifest.json">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#0a0d14;color:#e2e8f0;min-height:100vh}
+header{background:#0f1520;border-bottom:1px solid #1a2035;padding:0 1rem;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+.dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:8px}
+.hbtns{display:flex;align-items:center;gap:6px}
+#rbtn{background:#1a2035;border:1px solid #1e2a40;color:#94a3b8;border-radius:10px;font-size:22px;cursor:pointer;width:46px;height:46px}
+#setbtn{background:#1a2035;border:1px solid #1e2a40;color:#94a3b8;border-radius:10px;font-size:18px;cursor:pointer;width:46px;height:46px}
+.body{padding:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
+.st{border-radius:10px;padding:8px 12px;position:relative;overflow:hidden}
+.st::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.st.r{background:#1a0a0a;border:1px solid #ef444430}.st.r::before{background:#ef4444}
+.st.dk{background:#140505;border:1px solid #7f1d1d}.st.dk::before{background:#7f1d1d}
+.st.p{background:#0f0a1a;border:1px solid #6366f130}.st.p::before{background:#6366f1}
+.st.b{background:#0a0e1a;border:1px solid #3b82f630}.st.b::before{background:#3b82f6}
+.sl{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px}
+.sn{font-size:38px;font-weight:700;line-height:1;margin:2px 0}
+.st.r .sn{color:#ef4444}.st.dk .sn{color:#fca5a5}.st.p .sn{color:#a5b4fc}.st.b .sn{color:#3b82f6}
+.sd{font-size:10px;color:#334155;margin-top:2px}
+.rbar{background:#1a0a0a;border:1px solid #ef444430;border-radius:8px;padding:6px 12px;display:flex;gap:12px;margin-bottom:8px;font-size:12px;flex-wrap:wrap}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:8px}
+.tab{background:#0f1520;border:1px solid #1a2035;border-radius:8px;padding:6px 4px;font-size:12px;font-weight:500;color:#475569;cursor:pointer;min-height:42px;display:flex;align-items:center;justify-content:center;gap:3px;text-align:center}
+.tab.active{background:#1a2035;color:#e2e8f0;border-color:#1e2a40}
+.cnt{border-radius:10px;padding:1px 7px;font-size:11px;font-weight:700}
+.cnt.r{background:#ef444420;color:#ef4444}.cnt.y{background:#eab30820;color:#eab308}
+.cnt.b{background:#3b82f620;color:#3b82f6}.cnt.p{background:#6366f120;color:#a5b4fc}
+.card{border-radius:12px;padding:14px;margin-bottom:10px}
+.card.u{background:#1a0a0a;border:1px solid #ef444440}
+.card.dk{background:#140505;border:1px solid #7f1d1d}
+.card.bw{background:#0a1400;border:1px solid #22c55e30}
+.card.s{background:#0a0e1a;border:1px solid #3b82f630}
+.card.e{background:#0f0a1a;border:1px solid #6366f130}
+.card.rc{background:#1a0a0a;border:1px solid #ef444430}
+.card.rw{background:#140e00;border:1px solid #eab30830}
+.bdg{display:inline-block;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:700}
+.bdg.u{background:#ef444420;color:#ef4444;border:1px solid #ef444440}
+.bdg.dk{background:#7f1d1d;color:#fff;border:1px solid #ef4444}
+.vid{background:#1a2035;color:#7dd3fc;border-radius:5px;padding:3px 8px;font-family:monospace;font-size:14px;font-weight:600}
+.mdl{font-size:11px;color:#64748b;margin-left:6px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}
+.lbl{font-size:11px;color:#475569;margin-bottom:3px}
+.val{font-size:13px;color:#94a3b8}
+.batt-id{font-family:monospace;font-size:14px;font-weight:700;color:#ef4444}
+.uuid-val{font-family:monospace;font-size:13px;color:#7dd3fc}
+.sep{border:none;border-top:1px solid #1a2035;margin:10px 0}
+.act{font-size:12px;color:#64748b;line-height:1.5}
+.btns{display:flex;gap:6px;margin-top:10px}
+.btns button{flex:1;border:none;border-radius:8px;padding:10px 4px;font-size:12px;font-weight:700;cursor:pointer;min-height:46px}
+.bg{background:#22c55e20;color:#22c55e;border:1px solid #22c55e40}
+.bo{background:#f9731620;color:#f97316;border:1px solid #f9731640}
+.br{background:#ef444420;color:#ef4444;border:1px solid #ef444440}
+.bc{background:#3b82f620;color:#3b82f6;border:1px solid #3b82f640}
+.empty{text-align:center;padding:3rem;color:#334155;font-size:14px;line-height:1.8}
+.sec-head{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;padding:8px 4px 6px;border-bottom:1px solid #1a2035;margin-bottom:8px}
+.hist-btn{background:#1a2035;border:1px solid #3b82f630;color:#7dd3fc;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:8px}
+.chain{font-family:monospace;font-size:11px;color:#64748b;margin-top:6px;line-height:1.5}
+
+/* Name setup overlay */
+.name-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.9);z-index:999;align-items:center;justify-content:center;padding:20px}
+.name-overlay.show{display:flex}
+.name-box{background:#0f1520;border:1px solid #1e2a40;border-radius:16px;padding:24px;width:100%;max-width:360px}
+.name-box h2{font-size:18px;font-weight:700;margin-bottom:8px;color:#e2e8f0}
+.name-box p{font-size:13px;color:#475569;margin-bottom:20px;line-height:1.5}
+.name-box input{width:100%;background:#0a0d14;border:1px solid #1e2a40;border-radius:10px;color:#e2e8f0;padding:12px 14px;font-size:15px;outline:none;margin-bottom:12px}
+.name-box input:focus{border-color:#3b82f6}
+.name-box button{width:100%;background:#3b82f6;border:none;color:#fff;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer}
+.name-box button:hover{background:#2563eb}
+
+/* History popup */
+.hist-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.85);z-index:998;align-items:flex-end;justify-content:center;padding:0}
+.hist-overlay.show{display:flex}
+.hist-box{background:#0f1520;border:1px solid #1e2a40;border-radius:16px 16px 0 0;padding:20px;width:100%;max-height:70vh;overflow-y:auto}
+.hist-box h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.hist-box .hclose{float:right;background:#1a2035;border:none;color:#94a3b8;border-radius:8px;width:30px;height:30px;cursor:pointer;font-size:14px}
+.hist-item{padding:10px 0;border-bottom:1px solid #1a2035}
+.hist-item:last-child{border-bottom:none}
+.hist-result{font-size:13px;font-weight:700;margin-bottom:3px}
+.hist-result.good{color:#22c55e}
+.hist-result.pin{color:#f97316}
+.hist-result.repair{color:#ef4444}
+.hist-meta{font-size:11px;color:#475569}
+</style>
+</head>
+<body>
+
+<!-- Name setup overlay (mandatory) -->
+<div class="name-overlay" id="nameOverlay">
+  <div class="name-box">
+    <h2>&#128100; Set Your Name &amp; City</h2>
+    <p>Your name is saved with every check you do. Your city filters the dashboard to show only scooters in your city.</p>
+    <input type="text" id="nameInput" placeholder="Enter your full name..." maxlength="50">
+    <select id="cityInput" style="width:100%;background:#0a0d14;border:1px solid #1e2a40;border-radius:10px;color:#e2e8f0;padding:12px 14px;font-size:15px;outline:none;margin-bottom:12px">
+      <option value="">Select your city...</option>
+      <option>Wolfsburg</option>
+      <option>Hannover</option>
+      <option>Berlin</option>
+      <option>Dresden</option>
+      <option>Halle (Saale)</option>
+    </select>
+    <button onclick="saveName()">Save &amp; Continue</button>
+  </div>
+</div>
+
+<!-- Check history popup -->
+<div class="hist-overlay" id="histOverlay">
+  <div class="hist-box">
+    <button class="hclose" onclick="closeHist()">&#10005;</button>
+    <h3 id="histTitle">Check History</h3>
+    <div style="font-size:11px;color:#475569;margin-bottom:14px" id="histSubtitle"></div>
+    <div id="histContent"><div style="text-align:center;padding:2rem;color:#475569">Loading...</div></div>
+  </div>
+</div>
+
+<header>
+  <div style="display:flex;align-items:center">
+    <span class="dot"></span>
+    <div>
+      <div style="font-size:15px;font-weight:600">Fleet Battery - East</div>
+      <div style="font-size:10px;color:#475569" id="lrun">Loading...</div>
+    </div>
+  </div>
+  <div class="hbtns">
+    <div style="text-align:right;margin-right:4px">
+      <div style="font-size:11px;color:#334155" id="cd"></div>
+      <div style="font-size:10px;color:#475569" id="myname"></div>
+    </div>
+    <button id="setbtn" onclick="showNameSetup()" title="Change name">&#9881;</button>
+    <button id="rbtn" onclick="doRefresh()">&#8635;</button>
+  </div>
+</header>
+
+<div class="body">
+  <div class="g2">
+    <div class="st y"><div class="sl">Battery Watch</div><div class="sn" id="sb">-</div><div class="sd">Pending check</div></div>
+    <div class="st b"><div class="sl">Scooter Watch</div><div class="sn" id="ss">-</div><div class="sd">Pending check</div></div>
+  </div>
+  <div class="tabs" style="grid-template-columns:repeat(2,1fr)">
+    <div class="tab active" onclick="swT('b',this)">&#128267; Battery <span class="cnt y" id="cb">0</span></div>
+    <div class="tab" onclick="swT('s',this)">&#128692; Scooter <span class="cnt b" id="cs">0</span></div>
+  </div>
+  <div id="content"><div class="empty">&#128267; Loading data...<br><small>Make sure you are connected to Bolt EU network</small></div></div>
+</div>
+
+<script>
+// ═════════════════════════════════════════════════════════════
+// IMPORTANT: paste your CURRENT Apps Script Web App deployment URL
+// below (Deploy -> Manage deployments -> copy the URL ending in /exec).
+// This must be the East Region WebApp.gs deployment, not the old
+// Wolfsburg-only one this app originally used.
+// ═════════════════════════════════════════════════════════════
+var BASE_URL = 'https://script.google.com/macros/s/AKfycbyfMB_RWk-_uLNmsiE1j1ee8FwCf8YY2KTr2KnuFlJbzRQIPX7j33Fp_7vZSulZA-ZqWg/exec';
+var URL_DATA = BASE_URL + '?data=1';
+var _d=null, _t='b', _tmr, _s=300;
+
+// ── Name + city management ─────────────────────────────────────
+function getName(){return localStorage.getItem('fleet_checker_name')||'';}
+function getCity(){return localStorage.getItem('fleet_checker_city')||'';}
+function showNameSetup(){
+  document.getElementById('nameInput').value=getName();
+  document.getElementById('cityInput').value=getCity();
+  document.getElementById('nameOverlay').classList.add('show');
+}
+function updateNameDisplay(){
+  var n=getName(), c=getCity();
+  var el=document.getElementById('myname');
+  if(el)el.textContent=n?'&#128100; '+n+(c?' &middot; '+c:''):'';
+}
+function requireName(cb){
+  var n=getName();
+  if(!n){
+    document.getElementById('nameInput').value='';
+    document.getElementById('nameOverlay').classList.add('show');
+    window._pendingCheck=cb;
+    return false;
+  }
+  return true;
+}
+function saveName(){
+  var n=document.getElementById('nameInput').value.trim();
+  var c=document.getElementById('cityInput').value;
+  if(!n){alert('Please enter your name to continue.');return;}
+  if(!c){alert('Please select your city to continue.');return;}
+  var cityChanged = getCity() && getCity()!==c;
+  localStorage.setItem('fleet_checker_name',n);
+  localStorage.setItem('fleet_checker_city',c);
+  document.getElementById('nameOverlay').classList.remove('show');
+  updateNameDisplay();
+  if(window._pendingCheck){
+    var cb=window._pendingCheck;
+    window._pendingCheck=null;
+    setTimeout(cb,100);
+  } else if(!_d){
+    doRefresh();
+  } else if(cityChanged){
+    draw(); // re-filter already-loaded data for the new city, no need to refetch
+  }
+}
+
+// ── Battery check history popup (unchanged — still the manual
+//    Battery Good/Pin Changed/Send to Repair check log, separate
+//    from the vehicle DTZ/swap timeline) ────────────────────────
+function showHist(batteryId, vehicleId){
+  document.getElementById('histTitle').textContent='Battery: '+batteryId;
+  document.getElementById('histSubtitle').textContent='Scooter: '+vehicleId;
+  document.getElementById('histContent').innerHTML='<div style="text-align:center;padding:2rem;color:#475569">Loading history...</div>';
+  document.getElementById('histOverlay').classList.add('show');
+  var old=document.getElementById('_hjs');if(old)old.remove();
+  window.__hcb=function(data){
+    if(!data||!data.ok){
+      document.getElementById('histContent').innerHTML='<div style="color:#ef4444;padding:1rem">Failed to load history</div>';
+      return;
+    }
+    var records=data.records||[];
+    if(!records.length){
+      document.getElementById('histContent').innerHTML='<div style="text-align:center;padding:2rem;color:#475569">No check history yet</div>';
+      return;
+    }
+    var h='';
+    records.slice().reverse().forEach(function(r){
+      var cls=r.result==='Battery Good'?'good':r.result==='Send to Repair'?'repair':'pin';
+      var icon=r.result==='Battery Good'?'&#9989;':r.result==='Send to Repair'?'&#128308;':'&#128992;';
+      h+='<div class="hist-item">'
+        +'<div class="hist-result '+cls+'">'+icon+' '+r.result+'</div>'
+        +'<div class="hist-meta">&#128197; '+r.date+'</div>'
+        +'<div class="hist-meta">&#128100; '+r.checkedBy+'</div>'
+        +(r.vehicleId?'<div class="hist-meta">&#128692; Scooter: '+r.vehicleId+'</div>':'')
+        +'</div>';
+    });
+    document.getElementById('histContent').innerHTML=h;
+  };
+  var sc=document.createElement('script');sc.id='_hjs';
+  sc.src=BASE_URL+'?action=batthistory&batteryId='+encodeURIComponent(batteryId)+'&callback=__hcb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+function closeHist(){document.getElementById('histOverlay').classList.remove('show');}
+
+// ── Tab switching ─────────────────────────────────────────────
+function swT(n,el){
+  _t=n;
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  el.classList.add('active');
+  if(_d)draw();
+}
+
+function ft(s){try{var d=new Date(s);if(isNaN(d))return s;return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' '+d.toLocaleDateString([],{day:'2-digit',month:'short'});}catch(e){return '';}}
+function fd(s){if(!s||s==='-')return '-';try{var d=new Date(s);if(!isNaN(d))return d.toLocaleDateString([],{day:'2-digit',month:'short',year:'numeric'});}catch(e){}return String(s).replace('T',' ').replace('.000Z','').replace('Z','').substring(0,16);}
+function filt(r){return(r||[]).filter(function(x){return x.cells[1]&&x.cells[1].trim()!=='';});}
+function vv(v){return '<span class="vid">'+v+'</span>';}
+
+function tick(){_s--;var m=String(Math.floor(_s/60)).padStart(2,'0'),s=String(_s%60).padStart(2,'0');var e=document.getElementById('cd');if(e)e.textContent='Next: '+m+':'+s;if(_s<=0){_s=300;doRefresh();}}
+
+// ── Main data refresh ─────────────────────────────────────────
+function doRefresh(){
+  clearInterval(_tmr);
+  var btn=document.getElementById('rbtn');
+  if(btn){btn.textContent='...';btn.disabled=true;}
+  document.getElementById('content').innerHTML='<div class="empty">Loading...</div>';
+  var old=document.getElementById('_js');if(old)old.remove();
+  window.__cb=function(data){
+    _d=data;
+    if(data&&data.stats){
+      draw();
+      var lr=document.getElementById('lrun');if(lr)lr.textContent=ft(data.stats.lastRun);
+    } else {
+      document.getElementById('content').innerHTML='<div class="empty">No data received.<br>Tap &#8635; to retry.</div>';
+    }
+    if(btn){btn.innerHTML='&#8635;';btn.disabled=false;}
+    _s=300;_tmr=setInterval(tick,1000);
+  };
+  var sc=document.createElement('script');sc.id='_js';
+  sc.onerror=function(){
+    document.getElementById('content').innerHTML='<div class="empty">&#9888; Could not connect.<br><br>Check BASE_URL is set correctly, make sure you are on the Bolt EU network, then tap &#8635; to retry.</div>';
+    if(btn){btn.innerHTML='&#8635;';btn.disabled=false;}
+    _s=300;_tmr=setInterval(tick,1000);
+  };
+  sc.src=URL_DATA+'&callback=__cb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+
+// ── Draw current tab ─────────────────────────────────────────
+// Column layouts below match the CURRENT East Region backend exactly
+// (see Fleetbatterytracker.gs setupDashboardTabs / WebApp.gs). If the
+// backend schema changes again, these are the indices to update.
+function draw(){
+  var d=_d;
+  var myCity=getCity();
+  var sc=function(id,n){var e=document.getElementById(id);if(e)e.textContent=n;};
+
+  // City filtering -- a mechanic only ever sees their own city's rows.
+  // Battery Watch City is column 8, Scooter Watch City is column 7
+  // (matches the current East Region backend schema).
+  var bR=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;});
+  var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[7]||'').trim()===myCity;});
+  var cc=d.checkCounts||{};
+  sc('sb',bR.length);sc('ss',sR.length);sc('cb',bR.length);sc('cs',sR.length);
+  var el=document.getElementById('content'),h='';
+
+  if(_t==='b'){
+    // Battery Watch columns: 0 LastUpdated,1 VehicleID,2 Model,3 UUID,4 BatteryID,
+    // 5 VehicleDTZDate,6 BatteryArrivedWH,7 OrderID,8 City,9 CheckResult
+    if(!bR.length){el.innerHTML='<div class="empty">&#10003; No batteries pending check</div>';return;}
+    bR.sort(function(a,b){return new Date(b.cells[5])-new Date(a.cells[5]);});
+    bR.forEach(function(row){
+      var r=row.cells,ri=row.rowIndex;
+      var v=String(r[1]||'').split("'").join('');
+      var bid=String(r[4]||'').trim();
+      var chk=r[9]||'OPEN';
+      var whColor=String(r[6]||'').indexOf('Not')>=0||!r[6]?'#f97316':'#22c55e';
+      var hist=cc[bid]||{count:0};
+      var histBtn=hist.count>0
+        ?'<button class="hist-btn" onclick="showHist(\''+bid.replace(/'/g,'')+'\',\''+v+'\')">&#128203; Checked '+hist.count+'x before &mdash; tap to view</button>'
+        :'';
+      h+='<div class="card bw">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+        +'<div>&#128267; '+vv(v)+'<span class="mdl">'+(r[2]||'')+'</span></div>'
+        +'<div style="text-align:right"><div class="lbl">Battery ID</div><div class="batt-id">'+bid+'</div></div>'
+        +'</div>'
+        +histBtn
+        +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
+        +'<div class="row2"><div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div>'
+        +'<div><div class="lbl">Arrived WH</div><div style="font-size:13px;font-weight:600;color:'+whColor+'">'+(r[6]||'Not yet')+'</div></div></div>'
+        +(chk!=='OPEN'?'<div style="padding:8px;background:#0a0d14;border-radius:8px;font-size:13px;font-weight:600;color:#22c55e;margin:8px 0">&#10003; Checked: '+chk+'</div>':'')
+        +'<div class="btns">'
+        +'<button class="bg" onclick="mBattChk(this,'+ri+',\''+bid.replace(/'/g,'')+'\',\''+v+'\',\'Battery Good\')">&#9989; Good</button>'
+        +'<button class="bo" onclick="mBattChk(this,'+ri+',\''+bid.replace(/'/g,'')+'\',\''+v+'\',\'Pin Changed\')">&#128992; Pin</button>'
+        +'<button class="br" onclick="mBattChk(this,'+ri+',\''+bid.replace(/'/g,'')+'\',\''+v+'\',\'Send to Repair\')">&#128308; Repair</button>'
+        +'</div></div>';
+    });
+
+  } else if(_t==='s'){
+    // Scooter Watch columns: 0 LastUpdated,1 VehicleID,2 Model,3 UUID,4 BatteryAtDTZ,
+    // 5 DTZDate,6 OrderID,7 City,8 Consecutive,9 Mechanic,10 RepairDate
+    sR.sort(function(a,b){return new Date(b.cells[5])-new Date(a.cells[5]);});
+    if(!sR.length){el.innerHTML='<div class="empty">No scooters at warehouse pending check</div>';return;}
+    sR.forEach(function(row){
+      var r=row.cells;
+      var v=String(r[1]||'').split("'").join('');
+      var mechanic=r[9]||'';
+      var repaired=mechanic&&mechanic.trim()!=='';
+      h+='<div class="card s">'
+        +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
+        +'<div>&#128692; '+vv(v)+'<span class="mdl">'+(r[2]||'')+'</span></div>'
+        +'<div style="text-align:right"><div class="lbl">Consecutive</div><div style="font-size:16px;font-weight:700;color:#ef4444">'+(r[8]||'1')+'</div></div>'
+        +'</div>'
+        +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
+        +'<div class="row2"><div><div class="lbl">Battery at DTZ</div><div class="batt-id">'+(r[4]||'-')+'</div></div>'
+        +'<div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div></div>'
+        +'<div class="row2"><div><div class="lbl">City</div><div style="font-size:13px">'+(r[7]||'-')+'</div></div>'
+        +'<div><div class="lbl">Order ID</div><div style="font-family:monospace;font-size:12px;color:#64748b">'+(r[6]||'-')+'</div></div></div>'
+        +(repaired?'<div style="padding:8px;background:#0a0d14;border-radius:8px;font-size:13px;font-weight:600;color:#22c55e;margin:8px 0">&#9989; Repaired by '+mechanic+'</div>'
+          :'<div class="btns"><button class="bc" onclick="mMarkChecked(this,\''+v+'\')">&#9989; Mark Checked (no repair)</button></div>')
+        +'</div>';
+    });
+  }
+
+  el.innerHTML=h||'<div class="empty">No data</div>';
+}
+
+// ── Battery Watch check (Good / Pin Changed / Send to Repair) ─
+function mBattChk(btn, ri, batteryId, vehicleId, result){
+  if(!requireName(function(){mBattChk(btn,ri,batteryId,vehicleId,result);})) return;
+  var name=getName();
+  btn.textContent='Saving...';btn.disabled=true;
+  var old=document.getElementById('_bcjs');if(old)old.remove();
+  window.__bccb=function(res){
+    if(res&&res.ok){
+      mChkSilent(ri, result);
+      btn.textContent='&#10003; '+result;
+      btn.style.background='#22c55e20';btn.style.color='#22c55e';
+      btn.disabled=false;
+      var card=btn.closest('.card');if(card)card.style.opacity='0.6';
+    } else {
+      btn.textContent='Error';btn.disabled=false;
+    }
+  };
+  var sc=document.createElement('script');sc.id='_bcjs';
+  sc.src=BASE_URL+'?action=battcheck'
+    +'&batteryId='+encodeURIComponent(batteryId)
+    +'&vehicleId='+encodeURIComponent(vehicleId)
+    +'&result='+encodeURIComponent(result)
+    +'&checkedBy='+encodeURIComponent(name)
+    +'&callback=__bccb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+
+// ── Silent row update for Battery Watch's own Check Result column ─
+function mChkSilent(ri, result){
+  var old=document.getElementById('_scjs');if(old)old.remove();
+  window.__sccb=function(){};
+  var sc=document.createElement('script');sc.id='_scjs';
+  sc.src=BASE_URL+'?action=check&tab='+encodeURIComponent('\uD83D\uDD0B Battery Watch')+'&row='+ri+'&result='+encodeURIComponent(result)+'&callback=__sccb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+
+// ── Scooter Watch: Mark Checked (replaces the old Male Connector
+//    Good/Replaced buttons -- matches the current desktop dashboard's
+//    "acknowledge, no repair" flow exactly) ───────────────────────
+function mMarkChecked(btn, vehicleId){
+  if(!requireName(function(){mMarkChecked(btn,vehicleId);})) return;
+  if(!confirm('Confirm: you checked scooter '+vehicleId+', connector is fine, no repair needed. This removes it from the queue but does NOT reset its consecutive-failure count.')) return;
+  var name=getName();
+  btn.textContent='Saving...';btn.disabled=true;
+  var old=document.getElementById('_mcjs');if(old)old.remove();
+  window.__mccb=function(res){
+    if(res&&res.ok){
+      btn.textContent='&#10003; Checked';
+      var card=btn.closest('.card');
+      if(card){card.style.opacity='0.4';setTimeout(function(){card.remove();},500);}
+    } else {
+      btn.textContent='Error';btn.disabled=false;
+      alert('Failed: '+(res&&res.error?res.error:'unknown error'));
+    }
+  };
+  var sc=document.createElement('script');sc.id='_mcjs';
+  sc.src=BASE_URL+'?action=checked&vehicleId='+encodeURIComponent(vehicleId)+'&checkedBy='+encodeURIComponent(name)+'&callback=__mccb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+
+window.onload=function(){
+  if(!getName()){
+    document.getElementById('nameOverlay').classList.add('show');
+  } else {
+    updateNameDisplay();
+    doRefresh();
+  }
+};
+</script>
+</body>
+</html>
