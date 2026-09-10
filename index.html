@@ -302,7 +302,7 @@ function draw(){
   // Battery Watch City is column 8, Scooter Watch City is column 7
   // (matches the current East Region backend schema).
   var bR=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;});
-  var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[7]||'').trim()===myCity;});
+  var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;});
   var cc=d.checkCounts||{};
   sc('sb',bR.length);sc('ss',sR.length);sc('cb',bR.length);sc('cs',sR.length);
   var el=document.getElementById('content'),h='';
@@ -341,24 +341,26 @@ function draw(){
 
   } else if(_t==='s'){
     // Scooter Watch columns: 0 LastUpdated,1 VehicleID,2 Model,3 UUID,4 BatteryAtDTZ,
-    // 5 DTZDate,6 OrderID,7 City,8 Consecutive,9 Mechanic,10 RepairDate
-    sR.sort(function(a,b){return new Date(b.cells[5])-new Date(a.cells[5]);});
+    // 5 DTZDate,6 WHArrivalDate,7 OrderID,8 City,9 Consecutive,10 Mechanic,11 RepairDate
+    sR.sort(function(a,b){return new Date(b.cells[6])-new Date(a.cells[6]);});
     if(!sR.length){el.innerHTML='<div class="empty">No scooters at warehouse pending check</div>';return;}
     sR.forEach(function(row){
       var r=row.cells;
       var v=String(r[1]||'').split("'").join('');
-      var mechanic=r[9]||'';
+      var mechanic=r[10]||'';
       var repaired=mechanic&&mechanic.trim()!=='';
       h+='<div class="card s">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
         +'<div>&#128692; '+vv(v)+'<span class="mdl">'+(r[2]||'')+'</span></div>'
-        +'<div style="text-align:right"><div class="lbl">Consecutive</div><div style="font-size:16px;font-weight:700;color:#ef4444">'+(r[8]||'1')+'</div></div>'
+        +'<div style="text-align:right"><div class="lbl">Consecutive</div><div style="font-size:16px;font-weight:700;color:#ef4444">'+(r[9]||'1')+'</div></div>'
         +'</div>'
+        +'<div style="margin-bottom:8px;padding:8px;background:#0a1400;border:1px solid #22c55e30;border-radius:8px">'
+        +'<div class="lbl">&#128230; Came into Warehouse</div><div style="font-size:15px;font-weight:700;color:#22c55e">'+fd(r[6]||'')+'</div></div>'
         +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
         +'<div class="row2"><div><div class="lbl">Battery at DTZ</div><div class="batt-id">'+(r[4]||'-')+'</div></div>'
         +'<div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div></div>'
-        +'<div class="row2"><div><div class="lbl">City</div><div style="font-size:13px">'+(r[7]||'-')+'</div></div>'
-        +'<div><div class="lbl">Order ID</div><div style="font-family:monospace;font-size:12px;color:#64748b">'+(r[6]||'-')+'</div></div></div>'
+        +'<div class="row2"><div><div class="lbl">City</div><div style="font-size:13px">'+(r[8]||'-')+'</div></div>'
+        +'<div><div class="lbl">Order ID</div><div style="font-family:monospace;font-size:12px;color:#64748b">'+(r[7]||'-')+'</div></div></div>'
         +(repaired?'<div style="padding:8px;background:#0a0d14;border-radius:8px;font-size:13px;font-weight:600;color:#22c55e;margin:8px 0">&#9989; Repaired by '+mechanic+'</div>'
           :'<div class="btns"><button class="bc" onclick="mMarkChecked(this,\''+v+'\')">&#9989; Mark Checked (no repair)</button></div>')
         +'</div>';
