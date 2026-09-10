@@ -143,12 +143,12 @@ header{background:#0f1520;border-bottom:1px solid #1a2035;padding:0 1rem;height:
 
 <div class="body">
   <div class="g2">
-    <div class="st y"><div class="sl">Battery Watch</div><div class="sn" id="sb">-</div><div class="sd">Pending check</div></div>
-    <div class="st b"><div class="sl">Scooter Watch</div><div class="sn" id="ss">-</div><div class="sd">Pending check</div></div>
+    <div class="st y" style="cursor:pointer" onclick="goToTab('b')"><div class="sl">Battery Watch</div><div class="sn" id="sb">-</div><div class="sd">Pending check</div></div>
+    <div class="st b" style="cursor:pointer" onclick="goToTab('s')"><div class="sl">Scooter Watch</div><div class="sn" id="ss">-</div><div class="sd">Pending check</div></div>
   </div>
   <div class="tabs" style="grid-template-columns:repeat(2,1fr)">
-    <div class="tab active" onclick="swT('b',this)">&#128267; Battery <span class="cnt y" id="cb">0</span></div>
-    <div class="tab" onclick="swT('s',this)">&#128692; Scooter <span class="cnt b" id="cs">0</span></div>
+    <div class="tab active" data-tab="b" onclick="swT('b',this)">&#128267; Battery <span class="cnt y" id="cb">0</span></div>
+    <div class="tab" data-tab="s" onclick="swT('s',this)">&#128692; Scooter <span class="cnt b" id="cs">0</span></div>
   </div>
   <div id="content"><div class="empty">&#128267; Loading data...<br><small>Make sure you are connected to Bolt EU network</small></div></div>
 </div>
@@ -252,6 +252,10 @@ function swT(n,el){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   el.classList.add('active');
   if(_d)draw();
+}
+function goToTab(n){
+  var btn=document.querySelector('.tab[data-tab="'+n+'"]');
+  if(btn) swT(n, btn);
 }
 
 function ft(s){try{var d=new Date(s);if(isNaN(d))return s;return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' '+d.toLocaleDateString([],{day:'2-digit',month:'short'});}catch(e){return '';}}
