@@ -366,7 +366,8 @@ function draw(){
         +'<div class="row2"><div><div class="lbl">City</div><div style="font-size:13px">'+(r[8]||'-')+'</div></div>'
         +'<div><div class="lbl">Order ID</div><div style="font-family:monospace;font-size:12px;color:#64748b">'+(r[7]||'-')+'</div></div></div>'
         +(repaired?'<div style="padding:8px;background:#0a0d14;border-radius:8px;font-size:13px;font-weight:600;color:#22c55e;margin:8px 0">&#9989; Repaired by '+mechanic+'</div>'
-          :'<div class="btns"><button class="bc" onclick="mMarkChecked(this,\''+v+'\')">&#9989; Mark Checked (no repair)</button></div>')
+          :'<div class="btns"><button class="bg" onclick="mMarkChecked(this,\''+v+'\',\'Male Connector Good\')">&#9989; Connector Good</button>'
+          +'<button class="br" onclick="mMarkChecked(this,\''+v+'\',\'Need Repair or Replace\')">&#128295; Need Repair</button></div>')
         +'</div>';
     });
   }
@@ -413,15 +414,18 @@ function mChkSilent(ri, result){
 // ── Scooter Watch: Mark Checked (replaces the old Male Connector
 //    Good/Replaced buttons -- matches the current desktop dashboard's
 //    "acknowledge, no repair" flow exactly) ───────────────────────
-function mMarkChecked(btn, vehicleId){
-  if(!requireName(function(){mMarkChecked(btn,vehicleId);})) return;
-  if(!confirm('Confirm: you checked scooter '+vehicleId+', connector is fine, no repair needed. This removes it from the queue but does NOT reset its consecutive-failure count.')) return;
+function mMarkChecked(btn, vehicleId, result){
+  if(!requireName(function(){mMarkChecked(btn,vehicleId,result);})) return;
+  var msg = result==='Male Connector Good'
+    ? 'Confirm: you checked scooter '+vehicleId+', connector is fine, no repair needed. This removes it from the queue but does NOT reset its consecutive-failure count.'
+    : 'Confirm: scooter '+vehicleId+' needs a repair or replacement. This removes it from the queue now -- its consecutive-failure count will reset automatically once a repair is actually logged.';
+  if(!confirm(msg)) return;
   var name=getName();
   btn.textContent='Saving...';btn.disabled=true;
   var old=document.getElementById('_mcjs');if(old)old.remove();
   window.__mccb=function(res){
     if(res&&res.ok){
-      btn.textContent='&#10003; Checked';
+      btn.textContent='&#10003; Saved';
       var card=btn.closest('.card');
       if(card){card.style.opacity='0.4';setTimeout(function(){card.remove();},500);}
     } else {
@@ -430,7 +434,7 @@ function mMarkChecked(btn, vehicleId){
     }
   };
   var sc=document.createElement('script');sc.id='_mcjs';
-  sc.src=BASE_URL+'?action=checked&vehicleId='+encodeURIComponent(vehicleId)+'&checkedBy='+encodeURIComponent(name)+'&callback=__mccb&_='+Date.now();
+  sc.src=BASE_URL+'?action=checked&vehicleId='+encodeURIComponent(vehicleId)+'&checkedBy='+encodeURIComponent(name)+'&result='+encodeURIComponent(result)+'&callback=__mccb&_='+Date.now();
   document.head.appendChild(sc);
 }
 
