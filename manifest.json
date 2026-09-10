@@ -1,0 +1,25 @@
+{
+  "name": "Fleet Battery Tracker - East Region",
+  "short_name": "Fleet Tracker",
+  "description": "East Region e-scooter battery fault tracker - mechanic check app",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0d14",
+  "theme_color": "#0a0d14",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "https://placehold.co/192x192/0a0d14/3b82f6?text=FT",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://placehold.co/512x512/0a0d14/3b82f6?text=FT",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
