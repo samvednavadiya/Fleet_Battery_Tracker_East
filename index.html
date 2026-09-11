@@ -90,7 +90,10 @@ header{background:#0f1520;border-bottom:1px solid #1a2035;padding:0 1rem;height:
 .hist-result.good{color:#22c55e}
 .hist-result.pin{color:#f97316}
 .hist-result.repair{color:#ef4444}
-.hist-meta{font-size:11px;color:#475569}
+.hist-meta{font-size:11px;color:#475569}.logo-card{display:flex;align-items:center;gap:8px;padding:6px 12px;background:linear-gradient(135deg,#0f1a2e 0%,#0f2417 100%);border:1px solid #1e3a5f;border-radius:10px;cursor:pointer;transition:all .15s ease}
+.logo-card:active{transform:scale(.96);border-color:#3b82f6}
+.refresh-hint{font-size:13px;color:#475569;opacity:.6;margin-left:1px;transition:all .15s ease}
+.logo-card:active .refresh-hint{color:#3b82f6;opacity:1;transform:rotate(180deg)}
 </style>
 </head>
 <body>
@@ -124,10 +127,10 @@ header{background:#0f1520;border-bottom:1px solid #1a2035;padding:0 1rem;height:
 </div>
 
 <header>
-  <div style="display:flex;align-items:center">
+  <div class="logo-card" onclick="fullReload()" title="Tap to reload the full app">
     <span class="dot"></span>
     <div>
-      <div style="font-size:15px;font-weight:600">Fleet Battery - East</div>
+      <div style="font-size:15px;font-weight:600">Fleet Battery - East <span class="refresh-hint">&#8635;</span></div>
       <div style="font-size:10px;color:#475569" id="lrun">Loading...</div>
     </div>
   </div>
@@ -266,6 +269,13 @@ function vv(v){return '<span class="vid">'+v+'</span>';}
 function tick(){_s--;var m=String(Math.floor(_s/60)).padStart(2,'0'),s=String(_s%60).padStart(2,'0');var e=document.getElementById('cd');if(e)e.textContent='Next: '+m+':'+s;if(_s<=0){_s=300;doRefresh();}}
 
 // ── Main data refresh ─────────────────────────────────────────
+// Reloads the ENTIRE app from GitHub Pages, not just the data -- this
+// is what picks up a new commit's HTML/JS changes. doRefresh() below
+// only re-fetches data into the already-loaded page code.
+function fullReload(){
+  window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+}
+
 function doRefresh(){
   clearInterval(_tmr);
   var btn=document.getElementById('rbtn');
