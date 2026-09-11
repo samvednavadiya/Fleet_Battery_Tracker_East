@@ -273,7 +273,9 @@ function tick(){_s--;var m=String(Math.floor(_s/60)).padStart(2,'0'),s=String(_s
 // is what picks up a new commit's HTML/JS changes. doRefresh() below
 // only re-fetches data into the already-loaded page code.
 function fullReload(){
-  window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+  var url = new URL(window.location.href);
+  url.searchParams.set('t', Date.now());
+  window.location.href = url.toString();
 }
 
 function doRefresh(){
