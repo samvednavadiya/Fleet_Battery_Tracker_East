@@ -333,7 +333,7 @@ function draw(){
       var v=String(r[1]||'').split("'").join('');
       var bid=String(r[4]||'').trim();
       var chk=r[9]||'OPEN';
-      var whColor=String(r[6]||'').indexOf('Not')>=0||!r[6]?'#f97316':'#22c55e';
+      var whColor=r[6]?'#22c55e':'#64748b';
       var hist=cc[bid]||{count:0};
       var histBtn=hist.count>0
         ?'<button class="hist-btn" onclick="showHist(\''+bid.replace(/'/g,'')+'\',\''+v+'\')">&#128203; Checked '+hist.count+'x before &mdash; tap to view</button>'
@@ -346,7 +346,7 @@ function draw(){
         +histBtn
         +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
         +'<div class="row2"><div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div>'
-        +'<div><div class="lbl">Arrived WH</div><div style="font-size:13px;font-weight:600;color:'+whColor+'">'+(r[6]||'Not yet')+'</div></div></div>'
+        +'<div><div class="lbl">Swapped Out</div><div style="font-size:13px;font-weight:600;color:'+whColor+'">'+(r[6]||'-')+'</div></div></div>'
         +(chk!=='OPEN'?'<div style="padding:8px;background:#0a0d14;border-radius:8px;font-size:13px;font-weight:600;color:#22c55e;margin:8px 0">&#10003; Checked: '+chk+'</div>':'')
         +'<div class="btns">'
         +'<button class="bg" onclick="mBattChk(this,'+ri+',\''+bid.replace(/'/g,'')+'\',\''+v+'\',\'Battery Good\')">&#9989; Good</button>'
