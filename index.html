@@ -317,8 +317,10 @@ function draw(){
   // City filtering -- a mechanic only ever sees their own city's rows.
   // Battery Watch City is column 8, Scooter Watch City is column 7
   // (matches the current East Region backend schema).
-  var bR=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;});
-  var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;});
+  var bR=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;})
+    .filter(function(r){var res=String(r.cells[9]||'OPEN');return res==='OPEN'||res==='';});
+  var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;})
+    .filter(function(r){var res=String(r.cells[10]||'OPEN');var mech=String(r.cells[11]||'').trim();return (res==='OPEN'||res==='')&&!mech;});
   var cc=d.checkCounts||{};
   sc('sb',bR.length);sc('ss',sR.length);sc('cb',bR.length);sc('cs',sR.length);
   var el=document.getElementById('content'),h='';
@@ -357,13 +359,13 @@ function draw(){
 
   } else if(_t==='s'){
     // Scooter Watch columns: 0 LastUpdated,1 VehicleID,2 Model,3 UUID,4 BatteryAtDTZ,
-    // 5 DTZDate,6 WHArrivalDate,7 OrderID,8 City,9 Consecutive,10 Mechanic,11 RepairDate
+    // 5 DTZDate,6 WHArrivalDate,7 OrderID,8 City,9 Consecutive,10 CheckResult,11 Mechanic,12 RepairDate
     sR.sort(function(a,b){return new Date(b.cells[6])-new Date(a.cells[6]);});
     if(!sR.length){el.innerHTML='<div class="empty">No scooters at warehouse pending check</div>';return;}
     sR.forEach(function(row){
       var r=row.cells;
       var v=String(r[1]||'').split("'").join('');
-      var mechanic=r[10]||'';
+      var mechanic=r[11]||'';
       var repaired=mechanic&&mechanic.trim()!=='';
       h+='<div class="card s">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
@@ -395,11 +397,9 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
   var old=document.getElementById('_bcjs');if(old)old.remove();
   window.__bccb=function(res){
     if(res&&res.ok){
-      mChkSilent(ri, result);
-      btn.textContent='&#10003; '+result;
-      btn.style.background='#22c55e20';btn.style.color='#22c55e';
-      btn.disabled=false;
-      var card=btn.closest('.card');if(card)card.style.opacity='0.6';
+      mChkSilent(vehicleId, batteryId, result);
+      var card=btn.closest('.card');
+      if(card){card.style.opacity='0.3';setTimeout(function(){card.remove();},400);}
     } else {
       btn.textContent='Error';btn.disabled=false;
     }
@@ -414,12 +414,15 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
   document.head.appendChild(sc);
 }
 
-// ── Silent row update for Battery Watch's own Check Result column ─
-function mChkSilent(ri, result){
+// Silent row update for Battery Watch's own Check Result column -- uses
+// stable keys (Vehicle ID + Battery ID), not a row number, since this
+// tab gets fully rebuilt on every runAll() and a row number captured by
+// the browser can go stale between page-load and the mechanic's click.
+function mChkSilent(vehicleId, batteryId, result){
   var old=document.getElementById('_scjs');if(old)old.remove();
   window.__sccb=function(){};
   var sc=document.createElement('script');sc.id='_scjs';
-  sc.src=BASE_URL+'?action=check&tab='+encodeURIComponent('\uD83D\uDD0B Battery Watch')+'&row='+ri+'&result='+encodeURIComponent(result)+'&callback=__sccb&_='+Date.now();
+  sc.src=BASE_URL+'?action=check&tab='+encodeURIComponent('\uD83D\uDD0B Battery Watch')+'&vehicleId='+encodeURIComponent(vehicleId)+'&batteryId='+encodeURIComponent(batteryId)+'&result='+encodeURIComponent(result)+'&callback=__sccb&_='+Date.now();
   document.head.appendChild(sc);
 }
 
