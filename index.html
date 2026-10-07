@@ -9,6 +9,7 @@
 <meta name="theme-color" content="#f8fafc">
 <title>Fleet Tracker - East Region</title>
 <link rel="manifest" href="manifest.json">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;color:#1e293b;min-height:100vh}
@@ -103,6 +104,23 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-
 .logo-card-sub{font-size:13px;color:#dbeafe;margin-top:1px}
 .refresh-hint{font-size:14px;color:#dbeafe;opacity:.8;margin-left:2px;transition:all .15s ease}
 .logo-card:active .refresh-hint{opacity:1;transform:rotate(180deg)}
+
+/* QR scanner */
+.scan-btn{width:100%;background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 2px 8px rgba(37,99,235,.25)}
+.scan-btn:active{transform:scale(.98)}
+.scan-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:#000;z-index:1000;flex-direction:column}
+.scan-overlay.show{display:flex}
+.scan-header{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;padding-top:calc(14px + env(safe-area-inset-top,0px));color:#fff;font-size:15px;font-weight:700}
+.scan-header button{background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;flex-shrink:0}
+.scan-video-wrap{flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#000}
+.scan-video-wrap video{width:100%;height:100%;object-fit:cover}
+.scan-frame{position:absolute;width:72%;max-width:280px;aspect-ratio:1;border:3px solid #4ade80;border-radius:18px;box-shadow:0 0 0 2000px rgba(0,0,0,.45);pointer-events:none}
+.scan-status{padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));text-align:center;color:#fff;font-size:14px;background:rgba(0,0,0,.5)}
+
+/* Found-battery result -- the "big letter popup" */
+.scan-found-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,.75);z-index:1001;align-items:center;justify-content:center;padding:20px}
+.scan-found-overlay.show{display:flex}
+.scan-found-box{background:#fff;border-radius:20px;padding:26px 22px;width:100%;max-width:400px;box-shadow:0 20px 50px rgba(0,0,0,.3)}
 </style>
 </head>
 <body>
@@ -133,6 +151,25 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-
     <div style="font-size:11px;color:#475569;margin-bottom:14px" id="histSubtitle"></div>
     <div id="histContent"><div style="text-align:center;padding:2rem;color:#475569">Loading...</div></div>
   </div>
+</div>
+
+<!-- QR scanner overlay -->
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-header">
+    <div>&#128247; Scan Battery QR</div>
+    <button onclick="closeScanner()">&#10005;</button>
+  </div>
+  <div class="scan-video-wrap">
+    <video id="scanVideo" playsinline webkit-playsinline muted autoplay></video>
+    <div class="scan-frame"></div>
+  </div>
+  <div class="scan-status" id="scanStatus">Starting camera...</div>
+  <canvas id="scanCanvas" style="display:none"></canvas>
+</div>
+
+<!-- Found-battery result (the "big letter" popup) -->
+<div class="scan-found-overlay" id="scanFoundOverlay">
+  <div class="scan-found-box" id="scanFoundBox"></div>
 </div>
 
 <div class="sticky-top">
@@ -176,7 +213,7 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-
 // ═════════════════════════════════════════════════════════════
 var BASE_URL = 'https://script.google.com/macros/s/AKfycbyfMB_RWk-_uLNmsiE1j1ee8FwCf8YY2KTr2KnuFlJbzRQIPX7j33Fp_7vZSulZA-ZqWg/exec';
 var URL_DATA = BASE_URL + '?data=1';
-var _d=null, _t='b', _tmr, _s=300;
+var _d=null, _t='b', _tmr, _s=300, _lastBattList=[];
 
 // ── Name + city management ─────────────────────────────────────
 function getName(){return localStorage.getItem('fleet_checker_name')||'';}
@@ -377,7 +414,7 @@ function draw(){
   // City filtering -- a mechanic only ever sees their own city's rows.
   // Battery Watch City is column 8, Scooter Watch City is column 7
   // (matches the current East Region backend schema).
-  var bR=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;})
+  var bR=_lastBattList=filt(d.batts&&d.batts.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;})
     .filter(function(r){var res=String(r.cells[9]||'OPEN');return res==='OPEN'||res==='';});
   var sR=filt(d.scoots&&d.scoots.rows).filter(function(r){return !myCity||String(r.cells[8]||'').trim()===myCity;})
     .filter(function(r){var res=String(r.cells[10]||'OPEN');var mech=String(r.cells[11]||'').trim();return (res==='OPEN'||res==='')&&!mech;});
@@ -388,7 +425,10 @@ function draw(){
   if(_t==='b'){
     // Battery Watch columns: 0 LastUpdated,1 VehicleID,2 Model,3 UUID,4 BatteryID,
     // 5 VehicleDTZDate,6 BatteryArrivedWH,7 OrderID,8 City,9 CheckResult
-    if(!bR.length){el.innerHTML='<div class="empty">&#10003; No batteries pending check</div>';return;}
+    var scanBtnHtml='<button class="scan-btn" onclick="openScanner()">&#128247; Scan Battery QR</button>'
+      +'<div style="font-size:11px;color:#94a3b8;text-align:center;margin:-4px 0 10px">OKAI batteries have no QR -- find them manually below</div>';
+    if(!bR.length){el.innerHTML=scanBtnHtml+'<div class="empty">&#10003; No batteries pending check</div>';return;}
+    h+=scanBtnHtml;
     bR.sort(function(a,b){return new Date(b.cells[5])-new Date(a.cells[5]);});
     var failedMarks=getFailedMarks();
     bR.forEach(function(row){
@@ -460,6 +500,54 @@ function draw(){
 }
 
 // ── Battery Watch check (Good / Pin Changed / Send to Repair) ─
+// Shared save core, used by both the normal list buttons and the QR
+// scan flow -- keeps the retry/timeout/dedup-failure handling in one
+// place rather than duplicated across two code paths. Calls
+// onSettled(ok, reason) when done; never throws.
+function saveBattCheckCore(batteryId, vehicleId, result, name, failId, onSettled){
+  var old=document.getElementById('_bcjs');if(old)old.remove();
+  var settled=false;
+  var timeout=setTimeout(function(){
+    if(settled)return;
+    settled=true;
+    markAsFailed(failId);
+    onSettled(false,'timeout');
+  },12000);
+  window.__bccb=function(res){
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    if(res&&res.ok){
+      clearFailedMark(failId);
+      onSettled(true);
+    } else {
+      markAsFailed(failId);
+      onSettled(false,'error');
+    }
+  };
+  var sc=document.createElement('script');sc.id='_bcjs';
+  sc.onerror=function(){
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    markAsFailed(failId);
+    onSettled(false,'connection');
+  };
+  sc.src=BASE_URL+'?action=battcheck'
+    +'&batteryId='+encodeURIComponent(batteryId)
+    +'&vehicleId='+encodeURIComponent(vehicleId)
+    +'&result='+encodeURIComponent(result)
+    +'&checkedBy='+encodeURIComponent(name)
+    +'&callback=__bccb&_='+Date.now();
+  document.head.appendChild(sc);
+}
+
+function battSaveFailMsg(batteryId, reason){
+  return (reason==='timeout' || reason==='connection')
+    ? 'Could not confirm the save for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.'
+    : 'Save failed for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.';
+}
+
 function mBattChk(btn, ri, batteryId, vehicleId, result){
   if(!requireName(function(){mBattChk(btn,ri,batteryId,vehicleId,result);})) return;
   var name=getName();
@@ -473,53 +561,140 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
   // the server also has its own duplicate guard as a second safety net.
   if(card){card.style.transition='opacity .15s';card.style.opacity='0';setTimeout(function(){if(card.parentNode)card.remove();},150);}
   decrementCount('sb','cb');
-  var old=document.getElementById('_bcjs');if(old)old.remove();
-  var settled=false;
+  removeFromCachedBatts(vehicleId,batteryId);
   var failId=vehicleId+'|'+batteryId;
-  var timeout=setTimeout(function(){
-    if(settled)return;
-    settled=true;
-    markAsFailed(failId);
-    alert('Could not confirm the save for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
-    doRefresh();
-  },12000);
-  window.__bccb=function(res){
-    if(settled)return;
-    settled=true;
-    clearTimeout(timeout);
-    if(!(res&&res.ok)){
-      markAsFailed(failId);
-      alert('Save failed for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
-      doRefresh();
-    } else {
-      clearFailedMark(failId);
-    }
-    // on success: card is already gone, nothing more to do -- the
-    // server updates Battery Watch's own Check Result in this same
-    // request, no second follow-up call needed.
-  };
-  var sc=document.createElement('script');sc.id='_bcjs';
-  sc.onerror=function(){
-    if(settled)return;
-    settled=true;
-    clearTimeout(timeout);
-    markAsFailed(failId);
-    alert('Connection issue saving battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
-    doRefresh();
-  };
-  sc.src=BASE_URL+'?action=battcheck'
-    +'&batteryId='+encodeURIComponent(batteryId)
-    +'&vehicleId='+encodeURIComponent(vehicleId)
-    +'&result='+encodeURIComponent(result)
-    +'&checkedBy='+encodeURIComponent(name)
-    +'&callback=__bccb&_='+Date.now();
-  document.head.appendChild(sc);
+  saveBattCheckCore(batteryId,vehicleId,result,name,failId,function(ok,reason){
+    if(!ok){ alert(battSaveFailMsg(batteryId,reason)); doRefresh(); }
+  });
 }
 
-// Silent row update for Battery Watch's own Check Result column -- uses
-// stable keys (Vehicle ID + Battery ID), not a row number, since this
-// tab gets fully rebuilt on every runAll() and a row number captured by
-// the browser can go stale between page-load and the mechanic's click.
+// ── QR scanning for Battery Watch ───────────────────────────────
+// Most batteries have a QR code printed on them with the Battery ID.
+// OKAI batteries don't (confirmed) -- those still need the manual list
+// below. Scanning searches the CURRENTLY LOADED Battery Watch list
+// (already filtered to the mechanic's own city) for a match, rather
+// than calling the server again -- instant, and consistent with
+// whatever's actually on screen.
+var _scanStream=null, _scanRAF=null;
+
+function openScanner(){
+  document.getElementById('scanOverlay').classList.add('show');
+  document.getElementById('scanStatus').textContent='Point camera at the battery QR code...';
+  if(!window.jsQR){
+    document.getElementById('scanStatus').textContent='Scanner failed to load -- please use the list below instead.';
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+    .then(function(stream){
+      _scanStream=stream;
+      var video=document.getElementById('scanVideo');
+      video.srcObject=stream;
+      video.setAttribute('playsinline','true');
+      video.play();
+      _scanRAF=requestAnimationFrame(scanTick);
+    })
+    .catch(function(){
+      document.getElementById('scanStatus').textContent='Camera access denied or unavailable -- please use the list below instead.';
+    });
+}
+
+function scanTick(){
+  var video=document.getElementById('scanVideo');
+  if(video.readyState===video.HAVE_ENOUGH_DATA){
+    var canvas=document.getElementById('scanCanvas');
+    var ctx=canvas.getContext('2d');
+    canvas.width=video.videoWidth;
+    canvas.height=video.videoHeight;
+    ctx.drawImage(video,0,0,canvas.width,canvas.height);
+    var imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
+    var code=null;
+    try{ code=jsQR(imageData.data,imageData.width,imageData.height); }catch(e){}
+    if(code && code.data){
+      onQRDetected(code.data);
+      return;
+    }
+  }
+  _scanRAF=requestAnimationFrame(scanTick);
+}
+
+function closeScanner(){
+  if(_scanRAF){cancelAnimationFrame(_scanRAF);_scanRAF=null;}
+  if(_scanStream){_scanStream.getTracks().forEach(function(t){t.stop();});_scanStream=null;}
+  document.getElementById('scanOverlay').classList.remove('show');
+}
+
+function onQRDetected(text){
+  closeScanner();
+  var scannedId=String(text).trim();
+  var rows=_lastBattList||[];
+  var match=null;
+  for(var i=0;i<rows.length;i++){
+    var bid=String(rows[i].cells[4]||'').trim();
+    if(bid && (bid===scannedId || scannedId.indexOf(bid)>=0 || bid.indexOf(scannedId)>=0)){
+      match=rows[i];
+      break;
+    }
+  }
+  if(match){
+    showScanFound(match);
+  } else {
+    alert('Battery "'+scannedId+'" was not found in your pending list.\n\nIt may already be checked, belong to a different city, or this scooter may not need a check right now.');
+  }
+}
+
+function showScanFound(row){
+  var r=row.cells;
+  var vid=String(r[1]||'').split("'").join('');
+  var model=r[2]||'';
+  var bid=String(r[4]||'').trim();
+  var html =
+    '<div style="text-align:center;margin-bottom:8px"><span style="font-size:12px;font-weight:700;color:#16a34a;text-transform:uppercase;letter-spacing:.06em">&#9989; Battery Found</span></div>'
+    +'<div style="text-align:center;font-family:monospace;font-size:28px;font-weight:800;color:#dc2626;margin-bottom:14px;word-break:break-all;line-height:1.2">'+bid+'</div>'
+    +'<div style="display:flex;justify-content:center;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap">'
+    +'<span class="vid" style="font-size:16px">'+vid+'</span><span style="font-size:14px;color:#64748b">'+model+'</span></div>'
+    +'<div class="row2" style="margin-bottom:18px">'
+    +'<div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div>'
+    +'<div><div class="lbl">Swapped Out</div><div style="font-size:13px;font-weight:600;color:'+(r[6]?'#16a34a':'#94a3b8')+'">'+(r[6]||'-')+'</div></div>'
+    +'</div>'
+    +'<div class="btns">'
+    +'<button class="bg" onclick="markFoundBattery(\''+bid.replace(/'/g,'')+'\',\''+vid+'\',\'Battery Good\')">&#9989; Good</button>'
+    +'<button class="bo" onclick="markFoundBattery(\''+bid.replace(/'/g,'')+'\',\''+vid+'\',\'Pin Changed\')">&#128992; Pin</button>'
+    +'<button class="br" onclick="markFoundBattery(\''+bid.replace(/'/g,'')+'\',\''+vid+'\',\'Send to Repair\')">&#128308; Repair</button>'
+    +'</div>'
+    +'<button onclick="closeScanFound()" style="width:100%;margin-top:14px;background:none;border:none;color:#94a3b8;font-size:13px;padding:6px;cursor:pointer">Cancel</button>';
+  document.getElementById('scanFoundBox').innerHTML=html;
+  document.getElementById('scanFoundOverlay').classList.add('show');
+}
+
+function closeScanFound(){
+  document.getElementById('scanFoundOverlay').classList.remove('show');
+}
+
+// Removes a battery from the cached dataset so the underlying list
+// (not just the found-modal) also correctly drops it immediately,
+// consistent with tapping a card directly in the list.
+function removeFromCachedBatts(vehicleId, batteryId){
+  if(_d && _d.batts && _d.batts.rows){
+    _d.batts.rows = _d.batts.rows.filter(function(row){
+      var r=row.cells;
+      return !(String(r[1]||'').split("'").join('')===vehicleId && String(r[4]||'').trim()===batteryId);
+    });
+  }
+}
+
+function markFoundBattery(batteryId, vehicleId, result){
+  if(!requireName(function(){markFoundBattery(batteryId,vehicleId,result);})) return;
+  var name=getName();
+  closeScanFound();
+  decrementCount('sb','cb');
+  removeFromCachedBatts(vehicleId,batteryId);
+  if(_t==='b') draw();
+  var failId=vehicleId+'|'+batteryId;
+  saveBattCheckCore(batteryId,vehicleId,result,name,failId,function(ok,reason){
+    if(!ok){ alert(battSaveFailMsg(batteryId,reason)); doRefresh(); }
+  });
+}
+
 // ── Scooter Watch: Mark Checked (replaces the old Male Connector
 //    Good/Replaced buttons -- matches the current desktop dashboard's
 //    "acknowledge, no repair" flow exactly) ───────────────────────
