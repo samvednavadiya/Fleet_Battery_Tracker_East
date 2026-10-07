@@ -12,14 +12,17 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#f8fafc;color:#1e293b;min-height:100vh}
-header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:0 1rem;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:20}
+header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-height:64px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:8px}
 .hbtns{display:flex;align-items:center;gap:6px}
 #rbtn{background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:10px;font-size:22px;cursor:pointer;width:46px;height:46px}
 #setbtn{background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;border-radius:10px;font-size:18px;cursor:pointer;width:46px;height:46px}
 .body{padding:10px}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px}
-.st{border-radius:10px;padding:8px 12px;position:relative;overflow:hidden;background:#fff}
+.sticky-top{position:sticky;top:0;z-index:20;background:#f8fafc;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px 10px}
+.st{border-radius:10px;padding:8px 12px;position:relative;overflow:hidden;background:#fff;border:1px solid #e2e8f0;transition:all .15s ease}
+.st.active-stat{border:2px solid #7c3aed;background:#f5f3ff;box-shadow:0 0 0 3px rgba(124,58,237,.12)}
+.st.active-stat .sn{color:#7c3aed}
 .st::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
 .st.r{background:#fef2f2;border:1px solid #fecaca}.st.r::before{background:#ef4444}
 .st.dk{background:#fef2f2;border:1px solid #dc2626}.st.dk::before{background:#dc2626}
@@ -132,6 +135,7 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:0 1rem;height:
   </div>
 </div>
 
+<div class="sticky-top">
 <header>
   <div class="logo-card" onclick="fullReload()" title="Tap to reload the full app">
     <span class="dot"></span>
@@ -149,12 +153,13 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:0 1rem;height:
     <button id="rbtn" onclick="doRefresh()">&#8635;</button>
   </div>
 </header>
+<div class="g2">
+  <div class="st active-stat" id="statB" style="cursor:pointer" onclick="goToTab('b')"><div class="sl">Battery Watch</div><div class="sn" id="sb">-</div><div class="sd">Pending check</div></div>
+  <div class="st" id="statS" style="cursor:pointer" onclick="goToTab('s')"><div class="sl">Scooter Watch</div><div class="sn" id="ss">-</div><div class="sd">Pending check</div></div>
+</div>
+</div>
 
 <div class="body">
-  <div class="g2">
-    <div class="st y" style="cursor:pointer" onclick="goToTab('b')"><div class="sl">Battery Watch</div><div class="sn" id="sb">-</div><div class="sd">Pending check</div></div>
-    <div class="st b" style="cursor:pointer" onclick="goToTab('s')"><div class="sl">Scooter Watch</div><div class="sn" id="ss">-</div><div class="sd">Pending check</div></div>
-  </div>
   <div class="tabs" style="grid-template-columns:repeat(2,1fr)">
     <div class="tab active" data-tab="b" onclick="swT('b',this)">&#128267; Battery <span class="cnt y" id="cb">0</span></div>
     <div class="tab" data-tab="s" onclick="swT('s',this)">&#128692; Scooter <span class="cnt b" id="cs">0</span></div>
@@ -260,6 +265,9 @@ function swT(n,el){
   _t=n;
   document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
   el.classList.add('active');
+  var statB=document.getElementById('statB'), statS=document.getElementById('statS');
+  if(statB) statB.classList.toggle('active-stat', n==='b');
+  if(statS) statS.classList.toggle('active-stat', n==='s');
   if(_d)draw();
 }
 function goToTab(n){
@@ -340,6 +348,19 @@ function markAsFailed(id){
     localStorage.setItem('fleet_failed_marks',JSON.stringify(obj));
   }catch(e){}
 }
+// Instantly updates both the sticky top-count and the tab badge when a
+// card is optimistically removed, so the mechanic sees the number drop
+// at the same moment the card disappears -- confirming the action
+// worked without needing to scan the list to find it again.
+function decrementCount(statId, badgeId){
+  [statId, badgeId].forEach(function(id){
+    var el=document.getElementById(id);
+    if(!el) return;
+    var n=parseInt(el.textContent,10);
+    if(!isNaN(n) && n>0) el.textContent=n-1;
+  });
+}
+
 function clearFailedMark(id){
   try{
     var obj=getFailedMarks();
@@ -451,6 +472,7 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
   // the battery correctly reappears rather than being silently lost --
   // the server also has its own duplicate guard as a second safety net.
   if(card){card.style.transition='opacity .15s';card.style.opacity='0';setTimeout(function(){if(card.parentNode)card.remove();},150);}
+  decrementCount('sb','cb');
   var old=document.getElementById('_bcjs');if(old)old.remove();
   var settled=false;
   var failId=vehicleId+'|'+batteryId;
@@ -515,6 +537,7 @@ function mMarkChecked(btn, vehicleId, result, orderId){
   // duplicate taps. A genuine failure alerts and refreshes so the
   // scooter correctly reappears instead of silently vanishing.
   if(card){card.style.transition='opacity .15s';card.style.opacity='0';setTimeout(function(){if(card.parentNode)card.remove();},150);}
+  decrementCount('ss','cs');
   var old=document.getElementById('_mcjs');if(old)old.remove();
   var settled=false;
   var failId='scoot|'+vehicleId+'|'+orderId;
