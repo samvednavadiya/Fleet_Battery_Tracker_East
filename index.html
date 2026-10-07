@@ -623,22 +623,49 @@ function closeScanner(){
   document.getElementById('scanOverlay').classList.remove('show');
 }
 
-function onQRDetected(text){
-  closeScanner();
-  var scannedId=String(text).trim();
+// Some battery QR codes encode PREFIX/VERSION/SERIAL/DATE (e.g.
+// "DLX/1.0/DSM2103250459/2021-03-25"), where VERSION and DATE can
+// differ between batteries that are still "the same battery" for our
+// purposes -- the dashboard's own Battery ID is just PREFIX+SERIAL
+// concatenated ("DLXDSM2103250459"), skipping those two fields
+// entirely. Confirmed directly against a real scan.
+function normalizeScannedId(text){
+  var t=String(text).trim();
+  var parts=t.split('/');
+  if(parts.length>=3) return (parts[0]+parts[2]).trim();
+  return t;
+}
+
+function findBattMatch(scannedRaw){
+  var normalized=normalizeScannedId(scannedRaw);
   var rows=_lastBattList||[];
-  var match=null;
   for(var i=0;i<rows.length;i++){
     var bid=String(rows[i].cells[4]||'').trim();
-    if(bid && (bid===scannedId || scannedId.indexOf(bid)>=0 || bid.indexOf(scannedId)>=0)){
-      match=rows[i];
-      break;
-    }
+    if(!bid) continue;
+    if(bid===normalized || bid===scannedRaw) return rows[i];
+    if(normalized.indexOf(bid)>=0 || bid.indexOf(normalized)>=0) return rows[i];
   }
+  return null;
+}
+
+function onQRDetected(text){
+  var match=findBattMatch(String(text).trim());
   if(match){
+    closeScanner();
     showScanFound(match);
   } else {
-    alert('Battery "'+scannedId+'" was not found in your pending list.\n\nIt may already be checked, belong to a different city, or this scooter may not need a check right now.');
+    // Not found -- no blocking alert. Briefly show why, then keep the
+    // camera running and resume scanning automatically, so a mechanic
+    // can just keep pointing at batteries without touching anything
+    // until one actually matches.
+    var statusEl=document.getElementById('scanStatus');
+    if(statusEl) statusEl.textContent='Not in your pending list -- keep scanning...';
+    setTimeout(function(){
+      if(_scanStream){ // only resume if the scanner wasn't closed meanwhile
+        if(statusEl) statusEl.textContent='Point camera at the battery QR code...';
+        _scanRAF=requestAnimationFrame(scanTick);
+      }
+    },1400);
   }
 }
 
