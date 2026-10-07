@@ -309,6 +309,39 @@ function doRefresh(){
 // Column layouts below match the CURRENT East Region backend exactly
 // (see Fleetbatterytracker.gs setupDashboardTabs / WebApp.gs). If the
 // backend schema changes again, these are the indices to update.
+// ── Failed-mark tracking ──────────────────────────────────────
+// When a save genuinely fails and the card reappears, there was
+// previously no way to tell it apart from a normal, never-attempted
+// item. This persists a small "recently failed" list on the phone
+// itself (survives refreshes), so that specific card gets a clear
+// warning badge until it's actually resolved. Entries expire after
+// 30 minutes to avoid stale clutter.
+function getFailedMarks(){
+  try{
+    var raw=localStorage.getItem('fleet_failed_marks');
+    if(!raw)return{};
+    var obj=JSON.parse(raw);
+    var cutoff=Date.now()-30*60*1000;
+    var pruned={};
+    Object.keys(obj).forEach(function(k){if(obj[k]>cutoff)pruned[k]=obj[k];});
+    return pruned;
+  }catch(e){return{};}
+}
+function markAsFailed(id){
+  try{
+    var obj=getFailedMarks();
+    obj[id]=Date.now();
+    localStorage.setItem('fleet_failed_marks',JSON.stringify(obj));
+  }catch(e){}
+}
+function clearFailedMark(id){
+  try{
+    var obj=getFailedMarks();
+    delete obj[id];
+    localStorage.setItem('fleet_failed_marks',JSON.stringify(obj));
+  }catch(e){}
+}
+
 function draw(){
   var d=_d;
   var myCity=getCity();
@@ -330,6 +363,7 @@ function draw(){
     // 5 VehicleDTZDate,6 BatteryArrivedWH,7 OrderID,8 City,9 CheckResult
     if(!bR.length){el.innerHTML='<div class="empty">&#10003; No batteries pending check</div>';return;}
     bR.sort(function(a,b){return new Date(b.cells[5])-new Date(a.cells[5]);});
+    var failedMarks=getFailedMarks();
     bR.forEach(function(row){
       var r=row.cells,ri=row.rowIndex;
       var v=String(r[1]||'').split("'").join('');
@@ -340,11 +374,15 @@ function draw(){
       var histBtn=hist.count>0
         ?'<button class="hist-btn" onclick="showHist(\''+bid.replace(/'/g,'')+'\',\''+v+'\')">&#128203; Checked '+hist.count+'x before &mdash; tap to view</button>'
         :'';
+      var failedBanner=failedMarks[v+'|'+bid]
+        ?'<div style="padding:8px 10px;background:#7f1d1d;border-radius:8px;font-size:12px;font-weight:700;color:#fff;margin-bottom:8px">&#9888; Last save attempt failed -- please check and mark again</div>'
+        :'';
       h+='<div class="card bw">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
         +'<div>&#128267; '+vv(v)+'<span class="mdl">'+(r[2]||'')+'</span></div>'
         +'<div style="text-align:right"><div class="lbl">Battery ID</div><div class="batt-id">'+bid+'</div></div>'
         +'</div>'
+        +failedBanner
         +histBtn
         +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
         +'<div class="row2"><div><div class="lbl">DTZ Date</div><div style="font-size:13px">'+fd(r[5]||'')+'</div></div>'
@@ -362,16 +400,21 @@ function draw(){
     // 5 DTZDate,6 WHArrivalDate,7 OrderID,8 City,9 Consecutive,10 CheckResult,11 Mechanic,12 RepairDate
     sR.sort(function(a,b){return new Date(b.cells[6])-new Date(a.cells[6]);});
     if(!sR.length){el.innerHTML='<div class="empty">No scooters at warehouse pending check</div>';return;}
+    var failedScootMarks=getFailedMarks();
     sR.forEach(function(row){
       var r=row.cells;
       var v=String(r[1]||'').split("'").join('');
       var mechanic=r[11]||'';
       var repaired=mechanic&&mechanic.trim()!=='';
+      var failedSBanner=failedScootMarks['scoot|'+v+'|'+(r[7]||'')]
+        ?'<div style="padding:8px 10px;background:#7f1d1d;border-radius:8px;font-size:12px;font-weight:700;color:#fff;margin-bottom:8px">&#9888; Last save attempt failed -- please mark again</div>'
+        :'';
       h+='<div class="card s">'
         +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">'
         +'<div>&#128692; '+vv(v)+'<span class="mdl">'+(r[2]||'')+'</span></div>'
         +'<div style="text-align:right"><div class="lbl">Consecutive</div><div style="font-size:16px;font-weight:700;color:#ef4444">'+(r[9]||'1')+'</div></div>'
         +'</div>'
+        +failedSBanner
         +'<div style="margin-bottom:8px;padding:8px;background:#0a1400;border:1px solid #22c55e30;border-radius:8px">'
         +'<div class="lbl">&#128230; Came into Warehouse</div><div style="font-size:15px;font-weight:700;color:#22c55e">'+fd(r[6]||'')+'</div></div>'
         +'<div style="margin-bottom:8px"><div class="lbl">UUID</div><div class="uuid-val">'+(r[3]||'-')+'</div></div>'
@@ -393,21 +436,49 @@ function draw(){
 function mBattChk(btn, ri, batteryId, vehicleId, result){
   if(!requireName(function(){mBattChk(btn,ri,batteryId,vehicleId,result);})) return;
   var name=getName();
-  btn.textContent='Saving...';btn.disabled=true;
+  var card=btn.closest('.card');
+  // Optimistic removal: the card disappears immediately on tap, with no
+  // "Saving..." waiting state at all -- this is what actually prevents
+  // double-tapping/reloading out of confusion, rather than just
+  // reacting to it after the fact. The save still happens in the
+  // background. If it genuinely fails (rare), we alert and refresh so
+  // the battery correctly reappears rather than being silently lost --
+  // the server also has its own duplicate guard as a second safety net.
+  if(card){card.style.transition='opacity .15s';card.style.opacity='0';setTimeout(function(){if(card.parentNode)card.remove();},150);}
   var old=document.getElementById('_bcjs');if(old)old.remove();
+  var settled=false;
+  var failId=vehicleId+'|'+batteryId;
+  var timeout=setTimeout(function(){
+    if(settled)return;
+    settled=true;
+    markAsFailed(failId);
+    alert('Could not confirm the save for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
+    doRefresh();
+  },12000);
   window.__bccb=function(res){
-    if(res&&res.ok){
-      // The server now updates Battery Watch's own Check Result inside
-      // this same request -- no second follow-up call needed, so this
-      // can never leave the row stuck showing OPEN if a second request
-      // fails to complete.
-      var card=btn.closest('.card');
-      if(card){card.style.opacity='0.3';setTimeout(function(){card.remove();},400);}
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    if(!(res&&res.ok)){
+      markAsFailed(failId);
+      alert('Save failed for battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
+      doRefresh();
     } else {
-      btn.textContent='Error';btn.disabled=false;
+      clearFailedMark(failId);
     }
+    // on success: card is already gone, nothing more to do -- the
+    // server updates Battery Watch's own Check Result in this same
+    // request, no second follow-up call needed.
   };
   var sc=document.createElement('script');sc.id='_bcjs';
+  sc.onerror=function(){
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    markAsFailed(failId);
+    alert('Connection issue saving battery '+batteryId+' -- it will reappear with a warning badge, please check it again.');
+    doRefresh();
+  };
   sc.src=BASE_URL+'?action=battcheck'
     +'&batteryId='+encodeURIComponent(batteryId)
     +'&vehicleId='+encodeURIComponent(vehicleId)
@@ -431,19 +502,44 @@ function mMarkChecked(btn, vehicleId, result, orderId){
     : 'Confirm: scooter '+vehicleId+' needs a repair or replacement. This removes it from the queue now -- its consecutive-failure count will reset automatically once a repair is actually logged.';
   if(!confirm(msg)) return;
   var name=getName();
-  btn.textContent='Saving...';btn.disabled=true;
+  var card=btn.closest('.card');
+  // Optimistic removal, same reasoning as Battery Watch: disappear
+  // immediately on confirm rather than sitting on "Saving..." waiting
+  // for a response, which is what was leading to confusion and
+  // duplicate taps. A genuine failure alerts and refreshes so the
+  // scooter correctly reappears instead of silently vanishing.
+  if(card){card.style.transition='opacity .15s';card.style.opacity='0';setTimeout(function(){if(card.parentNode)card.remove();},150);}
   var old=document.getElementById('_mcjs');if(old)old.remove();
+  var settled=false;
+  var failId='scoot|'+vehicleId+'|'+orderId;
+  var timeout=setTimeout(function(){
+    if(settled)return;
+    settled=true;
+    markAsFailed(failId);
+    alert('Could not confirm the save for scooter '+vehicleId+' -- it will reappear with a warning badge, please mark it again.');
+    doRefresh();
+  },12000);
   window.__mccb=function(res){
-    if(res&&res.ok){
-      btn.textContent='&#10003; Saved';
-      var card=btn.closest('.card');
-      if(card){card.style.opacity='0.4';setTimeout(function(){card.remove();},500);}
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    if(!(res&&res.ok)){
+      markAsFailed(failId);
+      alert('Save failed for scooter '+vehicleId+' -- it will reappear with a warning badge, please mark it again.');
+      doRefresh();
     } else {
-      btn.textContent='Error';btn.disabled=false;
-      alert('Failed: '+(res&&res.error?res.error:'unknown error'));
+      clearFailedMark(failId);
     }
   };
   var sc=document.createElement('script');sc.id='_mcjs';
+  sc.onerror=function(){
+    if(settled)return;
+    settled=true;
+    clearTimeout(timeout);
+    markAsFailed(failId);
+    alert('Connection issue saving scooter '+vehicleId+' -- it will reappear with a warning badge, please mark it again.');
+    doRefresh();
+  };
   sc.src=BASE_URL+'?action=checked&vehicleId='+encodeURIComponent(vehicleId)+'&checkedBy='+encodeURIComponent(name)+'&result='+encodeURIComponent(result)+'&orderId='+encodeURIComponent(orderId||'')+'&callback=__mccb&_='+Date.now();
   document.head.appendChild(sc);
 }
