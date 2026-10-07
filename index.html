@@ -397,7 +397,10 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
   var old=document.getElementById('_bcjs');if(old)old.remove();
   window.__bccb=function(res){
     if(res&&res.ok){
-      mChkSilent(vehicleId, batteryId, result);
+      // The server now updates Battery Watch's own Check Result inside
+      // this same request -- no second follow-up call needed, so this
+      // can never leave the row stuck showing OPEN if a second request
+      // fails to complete.
       var card=btn.closest('.card');
       if(card){card.style.opacity='0.3';setTimeout(function(){card.remove();},400);}
     } else {
@@ -418,14 +421,6 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
 // stable keys (Vehicle ID + Battery ID), not a row number, since this
 // tab gets fully rebuilt on every runAll() and a row number captured by
 // the browser can go stale between page-load and the mechanic's click.
-function mChkSilent(vehicleId, batteryId, result){
-  var old=document.getElementById('_scjs');if(old)old.remove();
-  window.__sccb=function(){};
-  var sc=document.createElement('script');sc.id='_scjs';
-  sc.src=BASE_URL+'?action=check&tab='+encodeURIComponent('\uD83D\uDD0B Battery Watch')+'&vehicleId='+encodeURIComponent(vehicleId)+'&batteryId='+encodeURIComponent(batteryId)+'&result='+encodeURIComponent(result)+'&callback=__sccb&_='+Date.now();
-  document.head.appendChild(sc);
-}
-
 // ── Scooter Watch: Mark Checked (replaces the old Male Connector
 //    Good/Replaced buttons -- matches the current desktop dashboard's
 //    "acknowledge, no repair" flow exactly) ───────────────────────
