@@ -212,7 +212,7 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-
 // Wolfsburg-only one this app originally used.
 // ═════════════════════════════════════════════════════════════
 var BASE_URL = 'https://script.google.com/macros/s/AKfycbyfMB_RWk-_uLNmsiE1j1ee8FwCf8YY2KTr2KnuFlJbzRQIPX7j33Fp_7vZSulZA-ZqWg/exec';
-var URL_DATA = BASE_URL + '?data=1';
+var URL_DATA = BASE_URL + '?data=1&lite=1'; // this app only ever uses batts/scoots/checkCounts, so skip the heavier unused tabs server-side
 var _d=null, _t='b', _tmr, _s=300, _lastBattList=[];
 
 // ── Name + city management ─────────────────────────────────────
