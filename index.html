@@ -170,7 +170,6 @@ header{background:#ffffff;border-bottom:1px solid #e2e8f0;padding:10px 1rem;min-
     <button class="scan-zoom-btn" id="zoomBtn1" onclick="setScanZoom('1x')">1x</button>
     <button class="scan-zoom-btn" id="zoomBtn2" onclick="setScanZoom('2x')">2x</button>
     <button class="scan-zoom-btn" id="zoomBtn3" onclick="setScanZoom('3x')">3x</button>
-    <button class="scan-zoom-btn" id="zoomBtnAuto" onclick="setScanZoom('auto')">Auto</button>
   </div>
   <div class="scan-status" id="scanStatus">Starting camera...</div>
   <canvas id="scanCanvas" style="display:none"></canvas>
@@ -585,18 +584,18 @@ function mBattChk(btn, ri, batteryId, vehicleId, result){
 // than calling the server again -- instant, and consistent with
 // whatever's actually on screen.
 var _scanStream=null, _scanRAF=null;
-var _scanTrack=null, _zoomCaps=null, _zoomMode='auto', _autoZoomTimer=null, _autoZoomIdx=0;
-// Visual multipliers for the three manual buttons -- most Android
-// devices report their zoom range directly in these same units (1 =
-// no zoom), so this is applied as-is, clamped to whatever the device
-// actually supports.
-var ZOOM_LEVELS=[1,2,3];
+var _scanTrack=null, _zoomCaps=null, _zoomMode='1x';
+// Visual multipliers for the three buttons -- most Android devices
+// report their zoom range directly in these same units (1 = no zoom),
+// so this is applied as-is, clamped to whatever the device actually
+// supports.
+var ZOOM_VALUES={'1x':1,'2x':2,'3x':3};
 
 function openScanner(){
   document.getElementById('scanOverlay').classList.add('show');
   document.getElementById('scanStatus').textContent='Point camera at the battery QR code...';
   document.getElementById('scanZoomRow').style.display='none';
-  _scanTrack=null; _zoomCaps=null; _zoomMode='auto'; _autoZoomIdx=0;
+  _scanTrack=null; _zoomCaps=null; _zoomMode='1x';
   if(!window.jsQR){
     document.getElementById('scanStatus').textContent='Scanner failed to load -- please use the list below instead.';
     return;
@@ -636,7 +635,7 @@ function setupZoomControls(){
   if(!caps || !caps.zoom || typeof caps.zoom.max!=='number') return;
   _zoomCaps=caps.zoom;
   document.getElementById('scanZoomRow').style.display='flex';
-  setScanZoom('auto');
+  setScanZoom('1x');
 }
 
 function applyZoomValue(z){
@@ -648,26 +647,11 @@ function applyZoomValue(z){
 function setScanZoom(mode){
   if(!_zoomCaps) return; // device doesn't support zoom at all -- buttons are hidden, but guard anyway
   _zoomMode=mode;
-  ['1x','2x','3x','auto'].forEach(function(m){
-    var btn=document.getElementById(m==='auto'?'zoomBtnAuto':'zoomBtn'+m.replace('x',''));
+  ['1x','2x','3x'].forEach(function(m){
+    var btn=document.getElementById('zoomBtn'+m.replace('x',''));
     if(btn) btn.classList.toggle('active', m===mode);
   });
-  if(_autoZoomTimer){clearInterval(_autoZoomTimer);_autoZoomTimer=null;}
-  if(mode==='auto'){
-    _autoZoomIdx=0;
-    applyZoomValue(ZOOM_LEVELS[0]);
-    // Cycles to the next zoom level every 2.5s while still in auto mode
-    // and nothing has been detected yet -- scanTick stops calling this
-    // entirely the moment a QR is found, so a successful scan always
-    // ends the cycling naturally.
-    _autoZoomTimer=setInterval(function(){
-      _autoZoomIdx=(_autoZoomIdx+1)%ZOOM_LEVELS.length;
-      applyZoomValue(ZOOM_LEVELS[_autoZoomIdx]);
-    }, 2500);
-  } else {
-    var mult={'1x':1,'2x':2,'3x':3}[mode] || 1;
-    applyZoomValue(mult);
-  }
+  applyZoomValue(ZOOM_VALUES[mode] || 1);
 }
 
 function scanTick(){
@@ -691,7 +675,6 @@ function scanTick(){
 
 function closeScanner(){
   if(_scanRAF){cancelAnimationFrame(_scanRAF);_scanRAF=null;}
-  if(_autoZoomTimer){clearInterval(_autoZoomTimer);_autoZoomTimer=null;}
   if(_scanStream){_scanStream.getTracks().forEach(function(t){t.stop();});_scanStream=null;}
   _scanTrack=null; _zoomCaps=null;
   document.getElementById('scanOverlay').classList.remove('show');
@@ -732,14 +715,18 @@ function onQRDetected(text){
     // camera running and resume scanning automatically, so a mechanic
     // can just keep pointing at batteries without touching anything
     // until one actually matches.
+    // innerHTML (not textContent) so the cross icon can be styled --
+    // this is the scan-status bar below the video/scan-frame, never
+    // overlapping the camera view itself, so the mechanic can keep the
+    // camera exactly where it is and immediately try the next battery.
     var statusEl=document.getElementById('scanStatus');
-    if(statusEl) statusEl.textContent='Not in your pending list -- keep scanning...';
+    if(statusEl) statusEl.innerHTML='<span style="color:#f87171;font-weight:700">&#10007; Battery is not in list</span>';
     setTimeout(function(){
       if(_scanStream){ // only resume if the scanner wasn't closed meanwhile
         if(statusEl) statusEl.textContent='Point camera at the battery QR code...';
         _scanRAF=requestAnimationFrame(scanTick);
       }
-    },1400);
+    },1500);
   }
 }
 
