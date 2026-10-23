@@ -607,13 +607,15 @@ function openScanner(){
   }
   // focusMode/width/height are "ideal", not "exact" -- a device or
   // browser that doesn't support them just ignores them rather than
-  // failing to open the camera at all. Continuous autofocus and a
-  // higher resolution both help with small, close-up QR codes like a
-  // battery label, which is exactly where focus has been struggling.
+  // failing to open the camera at all. 1280 balances enough detail for
+  // a small, close-up QR code against the processing cost of every
+  // single frame -- 1920 (tried previously) turned out to overload the
+  // phone's browser badly enough to slow down both scanning itself and
+  // the UI responding to taps, which is exactly the lag that was seen.
   navigator.mediaDevices.getUserMedia({video:{
     facingMode:'environment',
     focusMode:'continuous',
-    width:{ideal:1920}, height:{ideal:1920}
+    width:{ideal:1280}, height:{ideal:1280}
   }})
     .then(function(stream){
       _scanStream=stream;
@@ -659,17 +661,35 @@ function setScanZoom(mode){
   applyZoomValue(ZOOM_VALUES[mode] || 1);
 }
 
+var _lastScanAttempt=0;
+var SCAN_INTERVAL_MS=80; // ~12/s -- plenty for a handheld scan, far lighter on the CPU than every single frame
+
 function scanTick(){
+  var now=performance.now();
+  if(now-_lastScanAttempt < SCAN_INTERVAL_MS){
+    _scanRAF=requestAnimationFrame(scanTick);
+    return;
+  }
+  _lastScanAttempt=now;
   var video=document.getElementById('scanVideo');
   if(video.readyState===video.HAVE_ENOUGH_DATA){
     var canvas=document.getElementById('scanCanvas');
     var ctx=canvas.getContext('2d');
-    canvas.width=video.videoWidth;
-    canvas.height=video.videoHeight;
+    // Capped regardless of the camera's actual resolution -- the video
+    // element on screen stays full quality, only the copy handed to the
+    // decoder is downscaled, since that's what actually costs CPU time.
+    var MAX_DIM=900;
+    var vw=video.videoWidth, vh=video.videoHeight;
+    var scale=Math.min(1, MAX_DIM/Math.max(vw,vh));
+    canvas.width=Math.round(vw*scale);
+    canvas.height=Math.round(vh*scale);
     ctx.drawImage(video,0,0,canvas.width,canvas.height);
     var imageData=ctx.getImageData(0,0,canvas.width,canvas.height);
     var code=null;
-    try{ code=jsQR(imageData.data,imageData.width,imageData.height); }catch(e){}
+    // dontInvert -- a printed battery label is always dark-on-light, so
+    // the inverted-colors pass jsQR would otherwise also attempt is
+    // never needed here, and skipping it roughly halves its cost.
+    try{ code=jsQR(imageData.data,imageData.width,imageData.height,{inversionAttempts:'dontInvert'}); }catch(e){}
     if(code && code.data){
       onQRDetected(code.data);
       return;
